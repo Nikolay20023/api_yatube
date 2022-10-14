@@ -1,3 +1,4 @@
+from email.policy import default
 from rest_framework import serializers
 from posts.models import Post, Comment, Group
 
@@ -5,7 +6,10 @@ from posts.models import Post, Comment, Group
 class CommentSerializers(serializers.ModelSerializer):
     """."""
 
-    author = serializers.StringRelatedField()
+    author = serializers.SlugRelatedField(
+        slug_field='username',
+        read_only=True
+    )
 
     class Meta:
         """."""
@@ -17,7 +21,10 @@ class CommentSerializers(serializers.ModelSerializer):
 class PostSerializers(serializers.ModelSerializer):
     """."""
 
-    author = serializers.StringRelatedField()
+    author = serializers.SlugRelatedField(
+        read_only=True,
+        slug_field='username',
+    )
 
     class Meta:
         """."""

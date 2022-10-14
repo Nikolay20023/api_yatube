@@ -1,40 +1,32 @@
-from rest_framework import viewsets
+from rest_framework import viewsets, permissions
 from django.core.exceptions import PermissionDenied
+
 
 from posts.models import Group, Post, Comment
 from api import serializers
 from django.shortcuts import get_object_or_404
 
 
+class IsOwnerOrReadOnly(permissions.BasePermission):
+    """."""
+
+    def has_object_permission(self, request, view, obj):
+        """."""
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return obj.author == request.user
+
+
 class PostViewSet(viewsets.ModelViewSet):
     """."""
 
+    queryset = Post.objects.all()
     serializer_class = serializers.PostSerializers
+    permission_classes = [IsOwnerOrReadOnly, permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
         """."""
         serializer.save(author=self.request.user)
-
-    def get_queryset(self):
-        """."""
-        pk = self.kwargs.get('pk')
-
-        if not pk:
-            return Post.objects.all()
-        else:
-            return Post.objects.filter(pk=pk)
-
-    def perform_update(self, serializer):
-        """."""
-        if serializer.instance.author != self.request.user:
-            raise PermissionDenied('Изменение чужого контента запрещено')
-        return super().perform_update(serializer)
-
-    def perform_destroy(self, instance):
-        """."""
-        if instance.author != self.request.user:
-            raise PermissionDenied('Изменение чужого контента запрещено')
-        return super().perform_destroy(instance)
 
 
 class GroupViewSet(viewsets.ReadOnlyModelViewSet):
@@ -48,25 +40,14 @@ class CommentViewSet(viewsets.ModelViewSet):
     """."""
 
     serializer_class = serializers.CommentSerializers
+    permission_classes = [IsOwnerOrReadOnly, permissions.IsAuthenticated]
 
     def get_queryset(self):
         """."""
-        post_id = self.kwargs.get('post_id')
-        return Comment.objects.filter(post=post_id)
-
-    def perform_destroy(self, instance):
-        """."""
-        if instance.author != self.request.user:
-            raise PermissionDenied('Изменение чужого контента запрещено')
-        return super().perform_destroy(instance)
-
-    def perform_update(self, serializer):
-        """."""
-        if serializer.instance.author != self.request.user:
-            raise PermissionDenied('Изменение чужого контента запрещено')
-        return super().perform_update(serializer)
+        post = get_object_or_404(Post, pk=self.kwargs.get('post_id'))
+        return post.comments
 
     def perform_create(self, serializer):
         """."""
-        post = get_object_or_404(Post, id=self.kwargs.get('post_id'))
-        serializer.save(author=self.request.user, post_id=post.id)
+        post = get_object_or_404(Post, pk=self.kwargs.get('post_id'))
+        serializer.save(author=self.request.user, post=post)
